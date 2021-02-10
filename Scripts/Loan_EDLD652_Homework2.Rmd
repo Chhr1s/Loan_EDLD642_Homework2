@@ -1,0 +1,119 @@
+---
+title: "Loan_EDLD652_Homework2"
+author: "Christopher Loan"
+date: "2/10/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(tidytuesdayR)
+library(rio)
+library(countrycode)
+```
+
+```{r}
+transit_cost <- import('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-01-05/transit_cost.csv')
+```
+
+```{r}
+country_codes <- countrycode::codelist %>% 
+  select(country_name = country.name.en, country = ecb)
+```
+
+```{r}
+transit_cost <- transit_cost %>% left_join(country_codes, by = c('country'))
+```
+
+```{r}
+transit_cost %>% 
+  mutate(real_cost = as.numeric(real_cost)) %>% 
+  filter(!is.na(real_cost) & !is.na(country_name)) %>% 
+  group_by(country_name) %>% 
+  summarize(mean = mean(real_cost), 
+         se = sd(real_cost)/sqrt(n())) %>% 
+  ggplot(aes(x = mean, y = fct_reorder(country_name, mean), 
+             xmin = if_else(mean - 1.96*se < 0, 0, mean - 1.96*se), 
+             xmax = mean + 1.96*se)) + 
+  geom_errorbar() +
+  geom_point(color = 'cornflowerblue') + 
+  theme_minimal(base_size = 18) + 
+  #lims(x = c(0, 100000))+
+  scale_x_continuous(breaks = c(0, 15000, 30000, 45000, 60000, 75000, 100000), expand = c(0,0)) +
+  labs(x = 'Real Cost (in millions of dollars)', 
+       y = 'Country', 
+       title = 'Cost to build transit systems varying across country', 
+       caption = 'Data provided through #tidytuesday by the Transit Cost Project') +
+  theme(panel.grid.minor = element_blank(), 
+        panel.grid.major.y = element_blank(), 
+        plot.caption = element_text(hjust = 0.5))
+```
+
+```{r}
+transit_cost %>% 
+  mutate(real_cost = as.numeric(real_cost)) %>% 
+  filter(!is.na(real_cost) & !is.na(country_name)) %>% 
+  group_by(country_name) %>% 
+  mutate(mean = mean(real_cost), 
+         n = n(),
+         se = if_else(n == 1, 0, sd(real_cost)/sqrt(n)),
+         ) %>% 
+  ggplot(aes(x = real_cost, y = fct_reorder(country_name, mean))) + 
+  #geom_errorbar() +
+  geom_jitter(color = 'cornflowerblue', height = 0, alpha = 0.4) + 
+  geom_point(aes(x = mean, y = fct_reorder(country_name, mean), size = se), shape = 21) +
+  theme_minimal(base_size = 15) + 
+  scale_x_continuous(breaks = c(0, 15000, 30000, 45000, 60000, 75000), expand = c(0,0)) +
+  labs(x = 'Real Cost (in millions of dollars)', 
+       y = 'Country', 
+       title = 'Cost to build transit systems varying across country', 
+       subtitle = 'Average cost per country shown with hollow points, and size of points represent standard error of the mean',
+       size = 'Standard Error of the Mean',
+       caption = 'Data provided through #tidytuesday by the Transit Cost Project') +
+  theme(panel.grid.minor = element_blank(), 
+        #panel.grid.major.y = element_blank(), 
+        plot.caption = element_text(hjust = 0.5), 
+        legend.position = 'bottom')
+```
+
+```{r}
+crime <- import(here::here('Data','crime.csv')) %>% janitor::clean_names()
+```
+
+```{r}
+model_data <- crime %>% 
+  mutate(neighborhood_id = relevel(factor(neighborhood_id), ref = "barnum"))
+model_data_2 <- crime %>% 
+  mutate(neighborhood_id = relevel(factor(neighborhood_id), ref = "barnum-west"))
+```
+
+```{r}
+m <- glm(is_crime ~ neighborhood_id, 
+         data = model_data,
+         family = "binomial")
+tidied <-  m %>% broom::tidy()
+```
+
+```{r}
+regis <- tidied %>% 
+  filter(term == 'neighborhood_idregis')
+```
+
+```{r}
+plot_dat <- tibble(distribution = qnorm(ppoints(20), 
+      mean = regis$estimate, 
+      sd = regis$std.error))
+
+# model_data <- crime %>% 
+#   mutate(neighborhood_id = relevel(factor(neighborhood_id), ref = "barnum"))
+
+plot_dat %>% 
+  ggplot(aes(x = distribution)) + 
+  geom_dotplot()
+```
+
+
