@@ -87,33 +87,65 @@ crime <- import(here::here('Data','crime.csv')) %>% janitor::clean_names()
 ```{r}
 model_data <- crime %>% 
   mutate(neighborhood_id = relevel(factor(neighborhood_id), ref = "barnum"))
-model_data_2 <- crime %>% 
-  mutate(neighborhood_id = relevel(factor(neighborhood_id), ref = "barnum-west"))
 ```
 
 ```{r}
 m <- glm(is_crime ~ neighborhood_id, 
          data = model_data,
          family = "binomial")
-tidied <-  m %>% broom::tidy()
 ```
 
 ```{r}
-regis <- tidied %>% 
-  filter(term == 'neighborhood_idregis')
+tidied <-  m %>% 
+  broom::tidy() %>% 
+  mutate(odds = exp(estimate))
+tidied  
 ```
 
 ```{r}
-plot_dat <- tibble(distribution = qnorm(ppoints(20), 
-      mean = regis$estimate, 
-      sd = regis$std.error))
+barnum_west <- tidied %>% 
+  filter(term == 'neighborhood_idbarnum-west')
+```
 
-# model_data <- crime %>% 
-#   mutate(neighborhood_id = relevel(factor(neighborhood_id), ref = "barnum"))
+```{r}
+plot_dat <- data.frame(
+  x = qnorm(ppoints(20), 
+      mean = barnum_west$estimate, 
+      sd = barnum_west$std.error)) %>% 
+  mutate(filler = ifelse(x <= 0, '#590AA8', '#2B8D5C'))
+
+temp_dat <-  tibble(label = c('Predicted cases where\n crime is more probable\n in West-Barnam', 'Predicted cases where\n crime more probable\n in Barnam'), 
+                    x = c(-0.07, 0.06), 
+                    y = c(0.8, 0.7), 
+                    fill = c('#590AA8', '#2B8D5C'))
 
 plot_dat %>% 
-  ggplot(aes(x = distribution)) + 
-  geom_dotplot()
+  ggplot() + 
+  geom_dotplot(aes(x = x, fill = filler), binwidth = 0.02) +
+  scale_fill_identity(guide = 'none') +
+  geom_vline(aes(xintercept = 0), color = 'darkred', size = 2) + 
+  theme(panel.grid.major.y = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.grid.major.x = element_line(color = 'gray70'),
+        panel.background = element_rect(fill = 'white'),
+        axis.line.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks = element_blank()) +
+  labs(title = 'Probability of differential crime rates between neighborhoods',
+       subtitle = 'West-Barnam compared to Barnum',
+       y = NULL,
+       x = 'Difference in log odds of a crime being committed',
+       caption = 'Each circle represents 5% probability') +
+  geom_label(data = temp_dat,
+           inherit.aes = F,
+          aes(label = label,
+               x = x,
+               y = y, 
+              fill = fill),
+          color = 'white',
+          show.legend = F,
+          label.size = 1,
+          alpha = 0.8) + scale_color_identity(guide = 'none') 
 ```
 
 
