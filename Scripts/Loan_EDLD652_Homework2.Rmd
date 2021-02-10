@@ -29,6 +29,8 @@ country_codes <- countrycode::codelist %>%
 transit_cost <- transit_cost %>% left_join(country_codes, by = c('country'))
 ```
 
+# 1. Uncertainty Plot 1
+
 ```{r}
 transit_cost %>% 
   mutate(real_cost = as.numeric(real_cost)) %>% 
@@ -52,6 +54,8 @@ transit_cost %>%
         panel.grid.major.y = element_blank(), 
         plot.caption = element_text(hjust = 0.5))
 ```
+
+# 2. Uncertainty Plot 2
 
 ```{r}
 transit_cost %>% 
@@ -79,6 +83,8 @@ transit_cost %>%
         plot.caption = element_text(hjust = 0.5), 
         legend.position = 'bottom')
 ```
+
+# 3. Fitting the model & plotting log odds
 
 ```{r}
 crime <- import(here::here('Data','crime.csv')) %>% janitor::clean_names()
@@ -148,4 +154,4 @@ plot_dat %>%
           alpha = 0.8) + scale_color_identity(guide = 'none') 
 ```
 
-
+# 4. Reproducing table
